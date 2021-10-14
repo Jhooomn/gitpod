@@ -37,9 +37,28 @@ const toStop = new DisposableCollection();
 
     document.title = gitpodServiceClient.info.workspace.description;
 
+    printWelcomeMessage();
+
     if (gitpodServiceClient.info.workspace.type !== 'regular') {
         return;
     }
+
+    //#region logo
+    function printWelcomeMessage() {
+        console.log(gitpodServiceClient.info.workspace);
+        console.log("        ./shhs                                                       ");
+        console.log("        :oyhhhhhy                                                    ");
+        console.log("     .ohhhhhhs/-    -//-                                             ");
+        console.log("     yyyyyo:    .:ohhhhhs                                            ");
+        console.log("     yyyy:   .+yhhhhhhhhh                                            ");
+        console.log("     yyyy:  .yyhhhy+ohhhh                                            ");
+        console.log("     yyyy:   :++:.  :hhhh                                            ");
+        console.log("     yyyys/.      ./shhhh                                            ");
+        console.log("     -syyyyyy+-:+yyyyyyy-                                            ");
+        console.log("       .:osyyyyyyyyyo/.                                              ");
+        console.log("           -+syys+-                                                  ");
+    }
+    //#endregion
 
     //#region ide lifecycle
     function isWorkspaceInstancePhase(phase: WorkspaceInstancePhase): boolean {
