@@ -36,6 +36,8 @@ export async function installMonitoringSatellite(params: InstallMonitoringSatell
     fs.writeFileSync(`${pwd}/observability/jsonnetfile.json`, JSON.stringify(jsonnetFile));
     exec(`cd observability && jb update`, {slice: sliceName})
 
+    let honeycombAPIKey = exec(`cat /mnt/secrets/arthur-honeycomb-api-key/arthur-honeycomb-api-key`, {silent: true}).stdout.trim()
+
     let jsonnetRenderCmd = `cd observability && jsonnet -c -J vendor -m monitoring-satellite/manifests \
     --ext-str is_preview="true" \
     --ext-str alerting_enabled="false" \
@@ -46,6 +48,8 @@ export async function installMonitoringSatellite(params: InstallMonitoringSatell
     --ext-str prometheus_dns_name="prometheus-${params.previewDomain}" \
     --ext-str grafana_dns_name="grafana-${params.previewDomain}" \
     --ext-str node_affinity_label="gitpod.io/workload_services" \
+    --ext-str honeycomb_api_key="${honeycombAPIKey}" \
+    --ext-str honeycomb_dataset="test-dataset" \
     monitoring-satellite/manifests/yaml-generator.jsonnet | xargs -I{} sh -c 'cat {} | gojsontoyaml > {}.yaml' -- {} && \
     find monitoring-satellite/manifests -type f ! -name '*.yaml' ! -name '*.jsonnet'  -delete`
 
@@ -73,6 +77,7 @@ async function ensureCorrectInstallationOrder(){
     deployKubeStateMetrics()
     deployGitpodServiceMonitors()
     deployKubernetesServiceMonitors()
+    deployOpenTelemetryCollector()
 }
 
 async function deployPrometheus() {
@@ -109,6 +114,11 @@ async function deployGitpodServiceMonitors() {
 async function deployKubernetesServiceMonitors() {
     werft.log(sliceName, 'installing Kubernetes ServiceMonitor resources')
     exec('kubectl apply -f observability/monitoring-satellite/manifests/kubernetes/', {silent: true})
+}
+
+async function deployOpenTelemetryCollector() {
+    werft.log(sliceName, 'installing OpenTelemetry-Collector resources')
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/otelCollector/', {silent: true})
 }
 
 export function observabilityStaticChecks() {
