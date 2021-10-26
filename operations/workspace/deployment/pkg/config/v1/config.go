@@ -44,7 +44,6 @@ type Config struct {
 	// MetaClusters is optional as we may not want to register the cluster
 	MetaClusters      []*common.MetaCluster      `yaml:"metaClusters"`
 	WorkspaceClusters []*common.WorkspaceCluster `yaml:"workspaceClusters"`
-	// TODO(princerachit): Add gitpod version here when we decide to use installed instead of relying solely on ops repository
 }
 
 // initializes workspace cluster names based on the config provided

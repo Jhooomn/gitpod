@@ -16,6 +16,15 @@ type ProjectContext struct {
 	Bucket        string `yaml:"bucket"`
 }
 
+// GitpodContext is a wrapper around gitpod installation inputs
+// Initially this will only contain the commit sha that needs to be
+// deployed
+type GitpodContext struct {
+	CommitSHA   string
+	ReleaseName string
+	ValuesFiles []string
+}
+
 // ClusterContext contains the context to access the cluster
 type ClusterContext struct {
 	KubeconfigPath string

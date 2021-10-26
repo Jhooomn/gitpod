@@ -23,6 +23,7 @@ var (
 )
 
 var cfgFile string
+var gitpodCommit string
 var jsonLog bool
 var verbose bool
 
@@ -47,6 +48,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "c", "config file (default is $HOME/ws-deployment.yaml)")
+	rootCmd.PersistentFlags().StringVar(&gitpodCommit, "commit", "i", "gitpod commit sha that would be deployed")
 	rootCmd.PersistentFlags().BoolVarP(&jsonLog, "json-log", "j", true, "produce JSON log output on verbose level")
 }
 

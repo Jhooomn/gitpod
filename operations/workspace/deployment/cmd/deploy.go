@@ -19,10 +19,14 @@ import (
 	"fmt"
 	"math/rand"
 	"os/exec"
+	"strings"
+	"time"
 
 	"github.com/gitpod-io/gitpod/common-go/log"
+	"github.com/gitpod-io/gitpod/ws-deployment/pkg/common"
 	"github.com/gitpod-io/gitpod/ws-deployment/pkg/orchestrate"
 	"github.com/spf13/cobra"
+	"golang.org/x/xerrors"
 )
 
 // deployCmd represents the deploy command
@@ -31,6 +35,14 @@ var deployCmd = &cobra.Command{
 	Short: "Creates a new workspace cluster and installs gitpod on it",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := getConfig()
+
+		if strings.TrimSpace(gitpodCommit) == "" {
+			log.WithError(xerrors.Errorf("gitpod commit sha cannot be empty. Maybe missing --commit")).Fatal()
+		}
+		gitpodContext := common.GitpodContext{
+			CommitSHA: gitpodCommit,
+		}
+		rand.Seed(time.Now().UnixNano())
 		randomId := fmt.Sprintf("%d", rand.Intn(200)+100)
 		cfg.InitializeWorkspaceClusterNames(randomId) // TODO(prs):revisit and update this
 		log.Log.Infof("%+v", cfg)
@@ -40,7 +52,7 @@ var deployCmd = &cobra.Command{
 		if err != nil {
 			log.Log.Infof("error while trying to activate service account: %s. Assuming SA is already activated and configured %s", out)
 		}
-		orchestrate.Deploy(&cfg.Project, cfg.WorkspaceClusters)
+		orchestrate.Deploy(&cfg.Project,gitpodContext, cfg.WorkspaceClusters)
 	},
 }
 
