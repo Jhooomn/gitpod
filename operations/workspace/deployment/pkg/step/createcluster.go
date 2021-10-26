@@ -37,6 +37,7 @@ func CreateCluster(context *common.ProjectContext, cluster *common.WorkspaceClus
 	if exists {
 		return xerrors.Errorf("cluster '%s' already exists", cluster.Name)
 	}
+	log.Log.Infof("cluster '%f' does not exist, going to create the cluster", cluster.Name)
 	// If there is neither an error nor the cluster exist then continue
 	err = generateTerraformModules(context, cluster)
 	if err != nil {
@@ -64,6 +65,7 @@ func doesClusterExist(context *common.ProjectContext, cluster *common.WorkspaceC
 }
 
 func generateTerraformModules(context *common.ProjectContext, cluster *common.WorkspaceCluster) error {
+	log.Log.Infof("generating terraform modules for cluster '%f'", cluster.Name)
 	out, err := exec.Command(DefaultTFModuleGeneratorScriptPath, generateDefaultScriptArgs(context, cluster)...).CombinedOutput()
 	log.Log.Errorf("error generating Terraform modules: %s", out)
 	return err
@@ -76,7 +78,7 @@ func generateDefaultScriptArgs(context *common.ProjectContext, cluster *common.W
 
 func applyTerraformModules(context *common.ProjectContext, cluster *common.WorkspaceCluster) error {
 	tfModulesDir := fmt.Sprintf(DefaultGeneratedTFModulePathTemplate, cluster.Name)
-	commandToRun := fmt.Sprintf("cd %s && terraform init && terraform apply -auto-approve", tfModulesDir)
+	commandToRun := fmt.Sprintf("cd %s && terraform init && terraform apply", tfModulesDir)
 	err := runner.ShellRunWithDefaultConfig("/bin/sh", []string{"-c", commandToRun})
 	return err
 }
