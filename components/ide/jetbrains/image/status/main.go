@@ -11,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,10 +32,20 @@ func main() {
 
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		var (
-			url    = "http://localhost:63342/codeWithMe/unattendedHostStatus?token=gitpod"
-			client = http.Client{Timeout: 1 * time.Second}
+			min_port = 63342
+			max_port = 63362
+			url      = "http://localhost:PORT/codeWithMe/unattendedHostStatus?token=gitpod"
+			client   = http.Client{Timeout: 1 * time.Second}
+			resp     *http.Response
+			err      error
 		)
-		resp, err := client.Get(url)
+		for p := min_port; p <= max_port; p++ {
+			resp, err = client.Get(strings.ReplaceAll(url, "PORT", strconv.Itoa(p)))
+			fmt.Printf("Trying to access JetBrains backend at port: %d\n", p)
+			if err == nil {
+				break
+			}
+		}
 		if err != nil {
 			errlog.Printf("Error accessing status endpoint of the JetBrains backend: %v\n", err)
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
