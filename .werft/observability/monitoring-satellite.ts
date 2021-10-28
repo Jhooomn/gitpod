@@ -6,7 +6,7 @@ import { validateIPaddress } from '../util/util';
 /**
  * Monitoring satellite deployment bits
  */
- export class InstallMonitoringSatelliteParams {
+export class InstallMonitoringSatelliteParams {
     pathToKubeConfig: string
     satelliteNamespace: string
     clusterName: string
@@ -22,21 +22,21 @@ const sliceName = 'observability';
  */
 export async function installMonitoringSatellite(params: InstallMonitoringSatelliteParams) {
     werft.log(sliceName, `Cloning observability repository - Branch: ${params.branch}`)
-    exec(`git clone --branch ${params.branch} https://roboquat:$(cat /mnt/secrets/monitoring-satellite-preview-token/token)@github.com/gitpod-io/observability.git`, {silent: true})
-    let currentCommit = exec(`git rev-parse HEAD`, {silent: true}).stdout.trim()
-    let pwd = exec(`pwd`, {silent: true}).stdout.trim()
+    exec(`git clone --branch ${params.branch} https://roboquat:$(cat /mnt/secrets/monitoring-satellite-preview-token/token)@github.com/gitpod-io/observability.git`, { silent: true })
+    let currentCommit = exec(`git rev-parse HEAD`, { silent: true }).stdout.trim()
+    let pwd = exec(`pwd`, { silent: true }).stdout.trim()
     werft.log(sliceName, `Updating Gitpod's mixin in monitoring-satellite's jsonnetfile.json to latest commit SHA: ${currentCommit}`);
 
     let jsonnetFile = JSON.parse(fs.readFileSync(`${pwd}/observability/jsonnetfile.json`, 'utf8'));
     jsonnetFile.dependencies.forEach(dep => {
-        if(dep.name == 'gitpod') {
+        if (dep.name == 'gitpod') {
             dep.version = currentCommit
         }
     });
     fs.writeFileSync(`${pwd}/observability/jsonnetfile.json`, JSON.stringify(jsonnetFile));
-    exec(`cd observability && jb update`, {slice: sliceName})
+    exec(`cd observability && jb update`, { slice: sliceName })
 
-    let honeycombAPIKey = exec(`cat /mnt/secrets/arthur-honeycomb-api-key/arthur-honeycomb-api-key`, {silent: true}).stdout.trim()
+    let honeycombAPIKey = exec(`cat /mnt/secrets/arthur-honeycomb-api-key/arthur-honeycomb-api-key`, { silent: true }).stdout.trim()
 
     let jsonnetRenderCmd = `cd observability && jsonnet -c -J vendor -m monitoring-satellite/manifests \
     --ext-str is_preview="true" \
@@ -54,22 +54,22 @@ export async function installMonitoringSatellite(params: InstallMonitoringSatell
     find monitoring-satellite/manifests -type f ! -name '*.yaml' ! -name '*.jsonnet'  -delete`
 
     werft.log(sliceName, 'rendering YAML files')
-    exec(jsonnetRenderCmd, {silent: true})
+    exec(jsonnetRenderCmd, { silent: true })
     // The correct kubectl context should already be configured prior to this step
     ensureCorrectInstallationOrder()
     ensureIngressesReadiness(params)
 }
 
-async function ensureCorrectInstallationOrder(){
+async function ensureCorrectInstallationOrder() {
     // Adds a label to the namespace metadata.
     // This label is used by ServiceMonitor's namespaceSelector, so Prometheus
     // only scrape metrics from its own namespace.
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/namespace.yaml', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/namespace.yaml', { silent: true })
 
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/podsecuritypolicy-restricted.yaml', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/podsecuritypolicy-restricted.yaml', { silent: true })
     werft.log(sliceName, 'installing prometheus-operator')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/prometheus-operator/', {silent: true})
-    exec('kubectl rollout status deployment prometheus-operator', {slice: sliceName})
+    // exec(`(find observability/monitoring-satellite/manifests/prometheus-operator -type f -name '*.yaml' | kubectl replace -f -) || (find observability/monitoring-satellite/manifests/prometheus-operator -type f -name '*.yaml' | kubectl create -f -) ` ,  {slice: sliceName})
+    exec('kubectl rollout status deployment prometheus-operator', { slice: sliceName })
 
     deployPrometheus()
     deployGrafana()
@@ -82,43 +82,43 @@ async function ensureCorrectInstallationOrder(){
 
 async function deployPrometheus() {
     werft.log(sliceName, 'installing prometheus')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/prometheus/', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/prometheus/', { silent: true })
     // Prometheus usually takes some time to be created. We sleep to give the operator some time
     // to create the StatefulSet.
-    exec('sleep 20 && kubectl rollout status statefulset prometheus-k8s', {slice: sliceName})
+    exec('sleep 20 && kubectl rollout status statefulset prometheus-k8s', { slice: sliceName })
 }
 
 async function deployGrafana() {
     werft.log(sliceName, 'installing grafana')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/grafana/', {silent: true})
-    exec('kubectl rollout status deployment grafana', {slice: sliceName})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/grafana/', { silent: true })
+    exec('kubectl rollout status deployment grafana', { slice: sliceName })
 }
 
 async function deployNodeExporter() {
     werft.log(sliceName, 'installing node-exporter')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/node-exporter/', {silent: true})
-    exec('kubectl rollout status daemonset node-exporter', {slice: sliceName})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/node-exporter/', { silent: true })
+    exec('kubectl rollout status daemonset node-exporter', { slice: sliceName })
 }
 
 async function deployKubeStateMetrics() {
     werft.log(sliceName, 'installing kube-state-metrics')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/kube-state-metrics/', {silent: true})
-    exec('kubectl rollout status deployment kube-state-metrics', {slice: sliceName})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/kube-state-metrics/', { silent: true })
+    exec('kubectl rollout status deployment kube-state-metrics', { slice: sliceName })
 }
 
 async function deployGitpodServiceMonitors() {
     werft.log(sliceName, 'installing gitpod ServiceMonitor resources')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/gitpod/', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/gitpod/', { silent: true })
 }
 
 async function deployKubernetesServiceMonitors() {
     werft.log(sliceName, 'installing Kubernetes ServiceMonitor resources')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/kubernetes/', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/kubernetes/', { silent: true })
 }
 
 async function deployOpenTelemetryCollector() {
     werft.log(sliceName, 'installing OpenTelemetry-Collector resources')
-    exec('kubectl apply -f observability/monitoring-satellite/manifests/otelCollector/', {silent: true})
+    exec('kubectl apply -f observability/monitoring-satellite/manifests/otelCollector/', { slice: sliceName })
 }
 
 export function observabilityStaticChecks() {
@@ -131,13 +131,13 @@ export function observabilityStaticChecks() {
 
 function jsonnetFmtCheck(): boolean {
     werft.log(sliceName, "Checking if jsonnet compiles and is well formated")
-    let success = exec('make fmt && git diff --exit-code .', {slice: sliceName}).code == 0
+    let success = exec('make fmt && git diff --exit-code .', { slice: sliceName }).code == 0
 
     if (!success) {
         werft.fail(sliceName, "Jsonnet is badly formatted. You can fix it by running 'cd operations/observability/mixins && make fmt'");
     }
 
-    success = exec('make lint', {slice: sliceName}).code == 0
+    success = exec('make lint', { slice: sliceName }).code == 0
 
     if (!success) {
         werft.fail(sliceName, "Jsonnet does not compile.");
@@ -147,7 +147,7 @@ function jsonnetFmtCheck(): boolean {
 
 function prometheusRulesCheck(): boolean {
     werft.log(sliceName, "Checking if Prometheus rules are valid.")
-    let success = exec("make promtool-lint", {slice: sliceName}).code == 0
+    let success = exec("make promtool-lint", { slice: sliceName }).code == 0
 
     if (!success) {
         const failedMessage = `Prometheus rule validation failed. For futher reference, please read:
@@ -162,7 +162,7 @@ function jsonnetUnitTests(): boolean {
     werft.log(sliceName, "Running mixin unit tests")
     werft.log(sliceName, "Checking for hardcoded dashboard's datasources")
 
-    let success = exec("make unit-tests", {slice: sliceName}).code == 0
+    let success = exec("make unit-tests", { slice: sliceName }).code == 0
 
     if (!success) {
         const failedMessage = `To make sure our dashboards work for both preview-environments and production/staging, we can't hardcode datasources. Please use datasource variables.`
@@ -178,13 +178,13 @@ function ensureIngressesReadiness(params: InstallMonitoringSatelliteParams) {
     let grafanaIngressReady = false
     let prometheusIngressReady = false
     werft.log(sliceName, "Checking ingresses readiness")
-    for(let i = 0; i < 15; i++) {
+    for (let i = 0; i < 15; i++) {
         grafanaIngressReady = ingressReady(params.satelliteNamespace, 'grafana')
         prometheusIngressReady = ingressReady(params.satelliteNamespace, 'prometheus')
 
-        if(grafanaIngressReady && prometheusIngressReady) { break }
+        if (grafanaIngressReady && prometheusIngressReady) { break }
         werft.log(sliceName, "Trying again in 1 minute")
-        exec(`sleep 60`, {slice: sliceName}) // 1 min
+        exec(`sleep 60`, { slice: sliceName }) // 1 min
         i++
     }
 
@@ -194,7 +194,7 @@ function ensureIngressesReadiness(params: InstallMonitoringSatelliteParams) {
 }
 
 function ingressReady(namespace: string, name: string): boolean {
-    let ingressAddress = exec(`kubectl get ingress -n ${namespace} --no-headers ${name} | awk {'print $4'}`, {silent: true}).stdout.trim()
+    let ingressAddress = exec(`kubectl get ingress -n ${namespace} --no-headers ${name} | awk {'print $4'}`, { silent: true }).stdout.trim()
     if (validateIPaddress(ingressAddress)) {
         return true
     }
