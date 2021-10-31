@@ -6,12 +6,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/gitpod-io/gitpod/installer/pkg/render"
 	"os"
+	"strings"
 
 	_ "embed"
 
-	"github.com/gitpod-io/gitpod/installer/pkg/common"
-	"github.com/gitpod-io/gitpod/installer/pkg/components"
 	"github.com/gitpod-io/gitpod/installer/pkg/config"
 	configv1 "github.com/gitpod-io/gitpod/installer/pkg/config/v1"
 	"github.com/gitpod-io/gitpod/installer/pkg/config/versions"
@@ -58,49 +58,12 @@ A config file is required which can be generated with the init command.`,
 			}
 		}
 
-		ctx, err := common.NewRenderContext(*cfg, versionMF, renderOpts.Namespace)
+		objs, err := render.ToYaml(*cfg, versionMF, renderOpts.Namespace)
 		if err != nil {
 			return err
 		}
 
-		var renderable common.RenderFunc
-		var helmCharts common.HelmFunc
-		switch cfg.Kind {
-		case configv1.InstallationFull:
-			renderable = components.FullObjects
-			helmCharts = components.FullHelmDependencies
-		case configv1.InstallationMeta:
-			renderable = components.MetaObjects
-			helmCharts = components.MetaHelmDependencies
-		case configv1.InstallationWorkspace:
-			renderable = components.WorkspaceObjects
-			helmCharts = components.WorkspaceHelmDependencies
-		default:
-			return fmt.Errorf("unsupported installation kind: %s", cfg.Kind)
-		}
-
-		objs, err := common.CompositeRenderFunc(renderable, components.CommonObjects)(ctx)
-		if err != nil {
-			return err
-		}
-
-		charts, err := common.CompositeHelmFunc(helmCharts, components.CommonHelmDependencies)(ctx)
-		if err != nil {
-			return err
-		}
-
-		for _, o := range objs {
-			fc, err := yaml.Marshal(o)
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("---\n%s\n", string(fc))
-		}
-
-		for _, c := range charts {
-			fmt.Printf("---\n%s\n", c)
-		}
+		fmt.Printf("---\n%s\n", strings.Join(objs, "---\n"))
 
 		return nil
 	},
