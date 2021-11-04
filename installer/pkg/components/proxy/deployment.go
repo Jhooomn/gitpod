@@ -6,6 +6,7 @@ package proxy
 
 import (
 	"fmt"
+	dockerregistry "github.com/gitpod-io/gitpod/installer/pkg/components/docker-registry"
 
 	"github.com/gitpod-io/gitpod/installer/pkg/common"
 
@@ -21,9 +22,11 @@ import (
 func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 	labels := common.DefaultLabels(Component)
 
-	configHash, err := common.ObjectHash(configmap(ctx))
-	if err != nil {
+	var hashObj []runtime.Object
+	if objs, err := configmap(ctx); err != nil {
 		return nil, err
+	} else {
+		hashObj = append(hashObj, objs...)
 	}
 
 	prometheusPort := corev1.ContainerPort{
@@ -78,6 +81,17 @@ func deployment(ctx *common.RenderContext) ([]runtime.Object, error) {
 			Name:      RegistryTLSCertSecret,
 			MountPath: "/etc/caddy/registry-certs",
 		})
+
+		if objs, err := dockerregistry.Secret(ctx); err != nil {
+			return nil, err
+		} else {
+			hashObj = append(hashObj, objs...)
+		}
+	}
+
+	configHash, err := common.ObjectHash(hashObj, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return []runtime.Object{
